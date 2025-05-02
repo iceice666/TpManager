@@ -8,14 +8,14 @@
 		"iceice666 <iceice666@outlook.com>"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/iceice666/TpManager",
+		"issues": "https://github.com/iceice666/TpManager/issues"
 	},
-	"license": "CC0-1.0",
+	"license": "MIT",
 	"icon": "assets/tp-manager/icon.png",
 	"environment": "*",
 	"entrypoints": {
-		"server": [
+		"main": [
 			{
 				"value": "me.iceice666.TpManager",
 				"adapter": "kotlin"
@@ -23,7 +23,7 @@
 		]
 	},
 	"mixins": [
-		"tp-manager.mixins.json",
+		"tp-manager.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
