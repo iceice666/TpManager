@@ -15,13 +15,15 @@ val logger: Logger = LoggerFactory.getLogger("tp-manager")
 object TpManager : ModInitializer {
     override fun onInitialize() {
         logger.info("Initializing TpManager mod")
-        
+
         // Register commands
         CommandRegistrationCallback.EVENT.register(WarpCommands::register)
+        CommandRegistrationCallback.EVENT.register(TeleportCommands::register)
 
-        // Initialize warp manager when server starts
+        // Initialize managers when server starts
         ServerLifecycleEvents.SERVER_STARTED.register { server ->
             WarpModInitializer.initialize(server)
+            TeleportManagerInitializer.initialize(server)
         }
     }
 }
