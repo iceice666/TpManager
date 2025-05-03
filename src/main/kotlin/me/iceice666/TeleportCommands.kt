@@ -95,6 +95,19 @@ object TeleportCommands {
                     )
                     .executes { context -> executeShowPreference(context) }
             )
+            
+        // /tpm config - show current configuration
+        tpmCommand.then(
+            CommandManager.literal("config")
+                .executes { context -> executeShowConfig(context) }
+        )
+            
+        // /tpm reload - reload configuration (op only)
+        tpmCommand.then(
+            CommandManager.literal("reload")
+                .requires { it.hasPermissionLevel(2) } // Only operators can use
+                .executes { context -> executeReloadConfig(context) }
+        )
 
         // /tpm cooldown - check remaining cooldown time
         tpmCommand.then(
@@ -586,5 +599,59 @@ object TeleportCommands {
      */
     private fun ServerCommandSource.sendHeader(message: String) {
         this.sendFeedback({ Text.literal(message).formatted(HEADER_FORMAT) }, false)
+    }
+    
+    /**
+     * Handles /tpm config - show current configuration
+     */
+    private fun executeShowConfig(context: CommandContext<ServerCommandSource>): Int {
+        val source = context.source
+        val config = TpManagerConfig.get()
+        
+        source.sendHeader("TpManager Configuration")
+        source.sendInfo("Request Expiration Time: ${config.requestExpirationTimeSeconds} seconds")
+        source.sendInfo("Teleport Cooldown: ${config.teleportCooldownSeconds} seconds")
+        source.sendInfo("Safety Check: ${if (config.enableSafetyCheck) "Enabled" else "Disabled"}")
+        
+        // Add reload button for operators
+        if (source.hasPermissionLevel(2)) {
+            val reloadButton = Text.literal("\n[Reload Configuration]")
+                .styled { style ->
+                    style.withColor(Formatting.GOLD)
+                        .withClickEvent(ClickEvent.RunCommand("/tpm reload"))
+                }
+            source.sendFeedback({ reloadButton }, false)
+        }
+        
+        return COMMAND_SUCCESS
+    }
+    
+    /**
+     * Handles /tpm reload - reload configuration
+     */
+    private fun executeReloadConfig(context: CommandContext<ServerCommandSource>): Int {
+        val source = context.source
+        
+        // Reload configuration
+        try {
+            TpManagerConfig.reload()
+            TeleportManagerInitializer.getTeleportManager().reloadConfig()
+            
+            source.sendSuccess("TpManager configuration reloaded successfully")
+            
+            // Send updated config button
+            val configButton = Text.literal("[View Updated Configuration]")
+                .styled { style ->
+                    style.withColor(Formatting.GREEN)
+                        .withClickEvent(ClickEvent.RunCommand("/tpm config"))
+                }
+            source.sendFeedback({ configButton }, false)
+            
+            return COMMAND_SUCCESS
+        } catch (e: Exception) {
+            logger.error("Failed to reload TpManager configuration", e)
+            source.sendError("Failed to reload configuration: ${e.message}")
+            return COMMAND_FAILURE
+        }
     }
 }

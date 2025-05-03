@@ -17,28 +17,32 @@ class TeleportManager(private val server: MinecraftServer) {
 
     // Maps player UUID to their teleport preferences
     private val playerPreferences = ConcurrentHashMap<UUID, TeleportPreference>()
-    
+
     // Maps player UUID to their last teleport time for cooldown
     private val lastTeleportTime = ConcurrentHashMap<UUID, Long>()
 
-    // Default request expiration time in milliseconds
-    private val REQUEST_EXPIRATION_TIME = TimeUnit.MINUTES.toMillis(2)
-    
-    // Default teleport cooldown in milliseconds
-    private val TELEPORT_COOLDOWN = TimeUnit.SECONDS.toMillis(30)
-    
-    // Safe radius around destination for teleportation
-    private val SAFE_TELEPORT_RADIUS = 2.0
-    
+    // Configuration instance
+    private var config = TpManagerConfig.get()
+
     // Scheduled executor for cleanup tasks
     private val scheduledExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
-    
+
     init {
         // Schedule periodic cleanup of expired requests (every 30 seconds)
         scheduledExecutor.scheduleAtFixedRate(
-            { cleanExpiredRequests(true) }, 
+            { cleanExpiredRequests(true) },
             30, 30, TimeUnit.SECONDS
         )
+    }
+    
+    /**
+     * Reloads configuration from disk
+     */
+    fun reloadConfig() {
+        TpManagerConfig.reload()
+        config = TpManagerConfig.get()
+        logger.info("TeleportManager config reloaded: cooldown=${config.teleportCooldownSeconds}s, " +
+                "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
     }
 
     /**
@@ -75,7 +79,7 @@ class TeleportManager(private val server: MinecraftServer) {
 
             else -> {
                 // Create a new request
-                val expirationTime = System.currentTimeMillis() + REQUEST_EXPIRATION_TIME
+                val expirationTime = System.currentTimeMillis() + config.getRequestExpirationTimeMillis()
                 targetRequests[requesterId] = Pair(expirationTime, isTeleportHere)
                 return RequestResult.CREATED
             }
@@ -187,14 +191,15 @@ class TeleportManager(private val server: MinecraftServer) {
     
     /**
      * Gets the remaining cooldown time for a player in seconds
-     * 
+     *
      * @return Remaining cooldown time in seconds, 0 if no cooldown
      */
     fun getRemainingCooldown(playerId: UUID): Int {
         val currentTime = System.currentTimeMillis()
         val lastTp = lastTeleportTime[playerId] ?: 0L
         val elapsed = currentTime - lastTp
-        return if (elapsed >= TELEPORT_COOLDOWN) 0 else ((TELEPORT_COOLDOWN - elapsed) / 1000).toInt()
+        val cooldown = config.getTeleportCooldownMillis()
+        return if (elapsed >= cooldown) 0 else ((cooldown - elapsed) / 1000).toInt()
     }
 
     /**
@@ -262,40 +267,45 @@ class TeleportManager(private val server: MinecraftServer) {
 
     /**
      * Checks if player is on teleport cooldown
-     * 
+     *
      * @return true if player can teleport, false if still on cooldown
      */
     private fun canPlayerTeleport(playerId: UUID): Boolean {
         val currentTime = System.currentTimeMillis()
         val lastTp = lastTeleportTime[playerId] ?: 0L
-        return (currentTime - lastTp) >= TELEPORT_COOLDOWN
+        return (currentTime - lastTp) >= config.getTeleportCooldownMillis()
     }
     
     /**
      * Checks if the destination is safe for teleportation
-     * 
+     *
      * @return true if destination is safe, false otherwise
      */
     private fun isDestinationSafe(destination: ServerPlayerEntity): Boolean {
+        // Skip safety check if disabled in config
+        if (!config.enableSafetyCheck) {
+            return true
+        }
+        
         val world = destination.world
         val pos = destination.blockPos
-        
+
         // Check if destination is not in a solid block
         if (!world.getBlockState(pos).isAir && !world.getBlockState(pos.up()).isAir) {
             return false
         }
-        
+
         // Check if there's a safe place to stand (non-air block below feet)
         if (world.getBlockState(pos.down()).isAir) {
             return false
         }
-        
+
         // Check if destination is not in lava or fire
         val blockState = world.getBlockState(pos)
         if (blockState.fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
             return false
         }
-        
+
         return true
     }
     
@@ -369,7 +379,8 @@ class TeleportManager(private val server: MinecraftServer) {
         val currentTime = System.currentTimeMillis()
         val lastTp = lastTeleportTime[playerId] ?: 0L
         val elapsed = currentTime - lastTp
-        return if (elapsed >= TELEPORT_COOLDOWN) 0 else ((TELEPORT_COOLDOWN - elapsed) / 1000).toInt()
+        val cooldown = config.getTeleportCooldownMillis()
+        return if (elapsed >= cooldown) 0 else ((cooldown - elapsed) / 1000).toInt()
     }
 
     /**
@@ -422,10 +433,17 @@ object TeleportManagerInitializer {
      */
     fun initialize(server: MinecraftServer) {
         logger.info("Initializing TeleportManager")
-        teleportManager = TeleportManager(server)
         
+        // Load configuration
+        val config = TpManagerConfig.load()
+        logger.info("Loaded TpManager configuration: cooldown=${config.teleportCooldownSeconds}s, " +
+                "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
+        
+        // Create teleport manager
+        teleportManager = TeleportManager(server)
+
         // Register shutdown hook to clean up resources
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register { 
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register {
             shutdown()
         }
     }

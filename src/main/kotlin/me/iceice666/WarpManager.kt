@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.minecraft.registry.RegistryKey
 import net.minecraft.server.MinecraftServer
 import net.minecraft.util.Identifier
+import net.minecraft.util.WorldSavePath
 import net.minecraft.world.World
 import java.io.File
 import java.io.IOException
@@ -35,7 +36,7 @@ class WarpManager(private val server: MinecraftServer) {
         .setPrettyPrinting()
         .serializeNulls()
         .create()
-    private val saveFile = File("warps.json")
+    private val saveFile = server.getSavePath(WorldSavePath.ROOT).resolve("warps.json").toFile()
     private val configDir = File("config")
 
     init {
