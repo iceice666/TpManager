@@ -329,7 +329,7 @@ object WarpCommands {
         val command = buildTeleportCommand(source.name, dimensionKey, warpToTeleport)
 
         try {
-            source.server.commandManager.dispatcher.execute(command, source)
+            source.server.commandManager.dispatcher.execute(command, source.server.commandSource)
             source.sendSuccess("Teleported to warp '$name'")
             return COMMAND_SUCCESS
         } catch (e: Exception) {
@@ -405,12 +405,12 @@ object WarpCommands {
             val removeText = Text.literal(" [Remove]")
                 .styled {
                     it.withColor(Formatting.RED)
-                        .withClickEvent(ClickEvent.RunCommand("/warp delete ${warp.name}"))
+                        .withClickEvent(ClickEvent.RunCommand("/warps delete ${warp.name}"))
                 }
             val modifyText = Text.literal(" [Modify]")
                 .styled {
                     it.withColor(Formatting.BLUE)
-                        .withClickEvent(ClickEvent.SuggestCommand("/warp modify ${warp.name}"))
+                        .withClickEvent(ClickEvent.SuggestCommand("/warps modify ${warp.name}"))
                 }
             return baseText.append(teleportText).append(removeText).append(modifyText)
         } else {
@@ -433,7 +433,7 @@ object WarpCommands {
      * Builds a command string for teleporting to a warp
      */
     private fun buildTeleportCommand(playerName: String, dimension: Identifier, warp: WarpPoint): String =
-        "execute in $dimension at $playerName run tp ${warp.x} ${warp.y} ${warp.z}"
+        "execute in $dimension run tp $playerName ${warp.x} ${warp.y} ${warp.z}"
 
     /**
      * Send a success message to the command source
