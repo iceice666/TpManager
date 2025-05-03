@@ -1,6 +1,10 @@
 package me.iceice666
 
-import net.fabricmc.api.ModInitializer
+import me.iceice666.tp.TeleportCommands
+import me.iceice666.tp.TeleportManagerInitializer
+import me.iceice666.warp.WarpCommands
+import me.iceice666.warp.WarpModInitializer
+import net.fabricmc.api.DedicatedServerModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import org.slf4j.LoggerFactory
@@ -12,8 +16,8 @@ val logger: Logger = LoggerFactory.getLogger("tp-manager")
 /**
  * Main entry point for the TpManager mod
  */
-object TpManager : ModInitializer {
-    override fun onInitialize() {
+object TpManager : DedicatedServerModInitializer {
+    override fun onInitializeServer() {
         logger.info("Initializing TpManager mod")
 
         // Register commands

@@ -1,8 +1,10 @@
-package me.iceice666
+package me.iceice666.tp
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
+import me.iceice666.Config
+import me.iceice666.logger
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.command.argument.EntityArgumentType
 import net.minecraft.server.command.CommandManager
@@ -606,7 +608,7 @@ object TeleportCommands {
      */
     private fun executeShowConfig(context: CommandContext<ServerCommandSource>): Int {
         val source = context.source
-        val config = TpManagerConfig.get()
+        val config = Config.Companion.get()
         
         source.sendHeader("TpManager Configuration")
         source.sendInfo("Request Expiration Time: ${config.requestExpirationTimeSeconds} seconds")
@@ -634,7 +636,7 @@ object TeleportCommands {
         
         // Reload configuration
         try {
-            TpManagerConfig.reload()
+            Config.Companion.reload()
             TeleportManagerInitializer.getTeleportManager().reloadConfig()
             
             source.sendSuccess("TpManager configuration reloaded successfully")

@@ -1,7 +1,9 @@
-package me.iceice666
+package me.iceice666.warp
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
+import com.google.gson.reflect.TypeToken
+import me.iceice666.logger
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.minecraft.registry.RegistryKey
 import net.minecraft.server.MinecraftServer
@@ -64,7 +66,7 @@ class WarpManager(private val server: MinecraftServer) {
 
             if (saveFile.exists()) {
                 val json = saveFile.readText()
-                val type = object : com.google.gson.reflect.TypeToken<Map<String, WarpPoint>>() {}.type
+                val type = object : TypeToken<Map<String, WarpPoint>>() {}.type
                 gson.fromJson<Map<String, WarpPoint>>(json, type)
                     ?.let { loadedWarps ->
                         warps.putAll(loadedWarps)

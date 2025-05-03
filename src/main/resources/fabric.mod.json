@@ -1,38 +1,32 @@
 {
-	"schemaVersion": 1,
-	"id": "tp-manager",
-	"version": "${version}",
-	"name": "Tp Manager",
-	"description": "Tp && warps",
-	"authors": [
-		"iceice666 <iceice666@outlook.com>"
-	],
-	"contact": {
-		"homepage": "https://github.com/iceice666/TpManager",
-		"issues": "https://github.com/iceice666/TpManager/issues"
-	},
-	"license": "MIT",
-	"icon": "assets/tp-manager/icon.png",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			{
-				"value": "me.iceice666.TpManager",
-				"adapter": "kotlin"
-			}
-		]
-	},
-	"mixins": [
-		"tp-manager.mixins.json"
-	],
-	"depends": {
-		"fabricloader": ">=0.16.14",
-		"minecraft": "~1.21.5",
-		"java": ">=21",
-		"fabric-api": "*",
-		"fabric-language-kotlin": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
-	}
+  "schemaVersion": 1,
+  "id": "tp-manager",
+  "version": "${version}",
+  "name": "Tp Manager",
+  "description": "Tp && warps",
+  "authors": [
+    "iceice666 <iceice666@outlook.com>"
+  ],
+  "contact": {
+    "homepage": "https://github.com/iceice666/TpManager",
+    "issues": "https://github.com/iceice666/TpManager/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/tp-manager/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "server": [
+      {
+        "value": "me.iceice666.TpManager",
+        "adapter": "kotlin"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "~1.21.5",
+    "java": ">=21",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*"
+  }
 }

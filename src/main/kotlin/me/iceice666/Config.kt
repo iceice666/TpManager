@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Configuration class for TpManager
  */
-data class TpManagerConfig(
+data class Config(
     // Teleport request expiration time in seconds
     val requestExpirationTimeSeconds: Int = 120,
     
@@ -27,16 +27,16 @@ data class TpManagerConfig(
         private val CONFIG_FILE: File = FabricLoader.getInstance().configDir.resolve("tp-manager.json").toFile()
         
         // Default configuration instance
-        private val DEFAULT_CONFIG = TpManagerConfig()
+        private val DEFAULT_CONFIG = Config()
         
         // Current loaded configuration
-        private var currentConfig: TpManagerConfig = DEFAULT_CONFIG
+        private var currentConfig: Config = DEFAULT_CONFIG
         
         /**
          * Loads the configuration from disk
          * @return The loaded configuration
          */
-        fun load(): TpManagerConfig {
+        fun load(): Config {
             try {
                 // Create default config if file doesn't exist
                 if (!CONFIG_FILE.exists()) {
@@ -48,7 +48,7 @@ data class TpManagerConfig(
                 
                 // Read and parse the config file
                 val json = String(Files.readAllBytes(CONFIG_FILE.toPath()))
-                val config = GSON.fromJson(json, TpManagerConfig::class.java)
+                val config = GSON.fromJson(json, Config::class.java)
                 
                 if (config == null) {
                     logger.error("Failed to parse TpManager configuration, using defaults")
@@ -74,7 +74,7 @@ data class TpManagerConfig(
          * Saves the configuration to disk
          * @param config The configuration to save
          */
-        fun save(config: TpManagerConfig) {
+        fun save(config: Config) {
             try {
                 // Create parent directories if they don't exist
                 if (!CONFIG_FILE.parentFile.exists()) {
@@ -94,7 +94,7 @@ data class TpManagerConfig(
          * Gets the current configuration
          * @return The current configuration
          */
-        fun get(): TpManagerConfig {
+        fun get(): Config {
             return currentConfig
         }
         

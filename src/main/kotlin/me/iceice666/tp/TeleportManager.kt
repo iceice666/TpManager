@@ -1,11 +1,17 @@
-package me.iceice666
+package me.iceice666.tp
 
+import me.iceice666.Config
+import me.iceice666.logger
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
+import net.minecraft.registry.tag.FluidTags
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
 import net.minecraft.util.Formatting
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 /**
@@ -22,10 +28,10 @@ class TeleportManager(private val server: MinecraftServer) {
     private val lastTeleportTime = ConcurrentHashMap<UUID, Long>()
 
     // Configuration instance
-    private var config = TpManagerConfig.get()
+    private var config = Config.Companion.get()
 
     // Scheduled executor for cleanup tasks
-    private val scheduledExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+    private val scheduledExecutor = Executors.newSingleThreadScheduledExecutor()
 
     init {
         // Schedule periodic cleanup of expired requests (every 30 seconds)
@@ -39,8 +45,8 @@ class TeleportManager(private val server: MinecraftServer) {
      * Reloads configuration from disk
      */
     fun reloadConfig() {
-        TpManagerConfig.reload()
-        config = TpManagerConfig.get()
+        Config.Companion.reload()
+        config = Config.Companion.get()
         logger.info("TeleportManager config reloaded: cooldown=${config.teleportCooldownSeconds}s, " +
                 "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
     }
@@ -302,7 +308,7 @@ class TeleportManager(private val server: MinecraftServer) {
 
         // Check if destination is not in lava or fire
         val blockState = world.getBlockState(pos)
-        if (blockState.fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
+        if (blockState.fluidState.isIn(FluidTags.LAVA)) {
             return false
         }
 
@@ -435,7 +441,7 @@ object TeleportManagerInitializer {
         logger.info("Initializing TeleportManager")
         
         // Load configuration
-        val config = TpManagerConfig.load()
+        val config = Config.Companion.load()
         logger.info("Loaded TpManager configuration: cooldown=${config.teleportCooldownSeconds}s, " +
                 "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
         
@@ -443,7 +449,7 @@ object TeleportManagerInitializer {
         teleportManager = TeleportManager(server)
 
         // Register shutdown hook to clean up resources
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register {
+        ServerLifecycleEvents.SERVER_STOPPING.register {
             shutdown()
         }
     }
@@ -458,7 +464,7 @@ object TeleportManagerInitializer {
             try {
                 val schedulerField = TeleportManager::class.java.getDeclaredField("scheduledExecutor")
                 schedulerField.isAccessible = true
-                val scheduler = schedulerField.get(it) as java.util.concurrent.ScheduledExecutorService
+                val scheduler = schedulerField.get(it) as ScheduledExecutorService
                 scheduler.shutdown()
                 logger.info("TeleportManager scheduler shutdown successfully")
             } catch (e: Exception) {
