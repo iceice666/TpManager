@@ -40,15 +40,17 @@ class TeleportManager(private val server: MinecraftServer) {
             30, 30, TimeUnit.SECONDS
         )
     }
-    
+
     /**
      * Reloads configuration from disk
      */
     fun reloadConfig() {
         Config.Companion.reload()
         config = Config.Companion.get()
-        logger.info("TeleportManager config reloaded: cooldown=${config.teleportCooldownSeconds}s, " +
-                "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
+        logger.info(
+            "TeleportManager config reloaded: cooldown=${config.teleportCooldownSeconds}s, " +
+                    "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}"
+        )
     }
 
     /**
@@ -107,8 +109,8 @@ class TeleportManager(private val server: MinecraftServer) {
             return false
         }
 
-        // Remove the request
-        val isTeleportHere = requests.remove(requesterId)?.second ?: false
+        // Check the teleport type
+        val isTeleportHere = requests.get(requesterId)?.second ?: false
 
         // Making sure player is existing
         val requester = server.playerManager.getPlayer(requesterId)
@@ -120,7 +122,8 @@ class TeleportManager(private val server: MinecraftServer) {
 
 
 
-        executeTeleport(requesterId, targetId, isTeleportHere)
+        val tpResult = executeTeleport(requesterId, targetId, isTeleportHere)
+        if (tpResult) requests.remove(requesterId)
         return true
     }
 
@@ -133,10 +136,10 @@ class TeleportManager(private val server: MinecraftServer) {
         val requests = pendingRequests[targetId] ?: return false
         return requests.remove(requesterId) != null
     }
-    
+
     /**
      * Cancels a sent teleport request
-     * 
+     *
      * @param requesterId UUID of the player who sent the request
      * @param targetId UUID of the player who received the request
      * @return true if request was found and cancelled, false otherwise
@@ -145,41 +148,27 @@ class TeleportManager(private val server: MinecraftServer) {
         val requests = pendingRequests[targetId] ?: return false
         return requests.remove(requesterId) != null
     }
-    
+
     /**
      * Gets all sent requests from a player
-     * 
+     *
      * @return Map of target UUID to expiration time and teleport type
      */
     fun getSentRequests(requesterId: UUID): Map<UUID, Pair<Long, Boolean>> {
         cleanExpiredRequests() // Clean expired requests first
-        
+
         val sentRequests = mutableMapOf<UUID, Pair<Long, Boolean>>()
-        
+
         // Find all requests sent by this player
         pendingRequests.forEach { (targetId, requests) ->
             requests[requesterId]?.let { requestData ->
                 sentRequests[targetId] = requestData
             }
         }
-        
+
         return sentRequests
     }
-    
-    /**
-     * Checks if a player has sent any pending requests
-     */
-    fun hasSentRequests(requesterId: UUID): Boolean {
-        cleanExpiredRequests() // Clean expired requests first
-        
-        pendingRequests.forEach { (_, requests) ->
-            if (requests.containsKey(requesterId)) {
-                return true
-            }
-        }
-        
-        return false
-    }
+
 
     /**
      * Sets a player's teleport preference
@@ -194,7 +183,7 @@ class TeleportManager(private val server: MinecraftServer) {
     fun getPreference(playerId: UUID): TeleportPreference {
         return playerPreferences.getOrDefault(playerId, TeleportPreference.ASK)
     }
-    
+
     /**
      * Gets the remaining cooldown time for a player in seconds
      *
@@ -228,43 +217,45 @@ class TeleportManager(private val server: MinecraftServer) {
 
     /**
      * Cleans up expired requests
-     * 
+     *
      * @param notifyPlayers Whether to notify players about expired requests
      */
     private fun cleanExpiredRequests(notifyPlayers: Boolean = false) {
         val currentTime = System.currentTimeMillis()
         val expiredRequests = mutableListOf<Triple<UUID, UUID, Boolean>>() // targetId, requesterId, isTeleportHere
-        
+
         // Find expired requests
         pendingRequests.forEach { (targetId, requests) ->
             requests.entries.removeIf { (requesterId, value) ->
                 val (expirationTime, isTeleportHere) = value
                 val isExpired = currentTime > expirationTime
-                
+
                 if (isExpired && notifyPlayers) {
                     expiredRequests.add(Triple(targetId, requesterId, isTeleportHere))
                 }
-                
+
                 isExpired
             }
         }
-        
+
         // Remove empty request maps
         pendingRequests.entries.removeIf { (_, requests) -> requests.isEmpty() }
-        
+
         // Notify players about expired requests if needed
         if (notifyPlayers) {
             expiredRequests.forEach { (targetId, requesterId, isTeleportHere) ->
                 val targetPlayer = server.playerManager.getPlayer(targetId)
                 val requesterPlayer = server.playerManager.getPlayer(requesterId)
-                
+
                 if (targetPlayer != null && requesterPlayer != null) {
                     val requestType = if (isTeleportHere) "teleport to them" else "teleport to you"
                     targetPlayer.sendMessage(
-                        Text.literal("Teleport request from ${requesterPlayer.name.string} to $requestType has expired").formatted(Formatting.YELLOW)
+                        Text.literal("Teleport request from ${requesterPlayer.name.string} to $requestType has expired")
+                            .formatted(Formatting.YELLOW)
                     )
                     requesterPlayer.sendMessage(
-                        Text.literal("Your teleport request to ${targetPlayer.name.string} has expired").formatted(Formatting.YELLOW)
+                        Text.literal("Your teleport request to ${targetPlayer.name.string} has expired")
+                            .formatted(Formatting.YELLOW)
                     )
                 }
             }
@@ -281,7 +272,7 @@ class TeleportManager(private val server: MinecraftServer) {
         val lastTp = lastTeleportTime[playerId] ?: 0L
         return (currentTime - lastTp) >= config.getTeleportCooldownMillis()
     }
-    
+
     /**
      * Checks if the destination is safe for teleportation
      *
@@ -292,7 +283,7 @@ class TeleportManager(private val server: MinecraftServer) {
         if (!config.enableSafetyCheck) {
             return true
         }
-        
+
         val world = destination.world
         val pos = destination.blockPos
 
@@ -314,7 +305,7 @@ class TeleportManager(private val server: MinecraftServer) {
 
         return true
     }
-    
+
     /**
      * Updates the player's teleport cooldown
      */
@@ -325,27 +316,27 @@ class TeleportManager(private val server: MinecraftServer) {
     /**
      * Executes the teleport between two players
      */
-    private fun executeTeleport(requesterId: UUID, targetId: UUID, isTeleportHere: Boolean) {
+    private fun executeTeleport(requesterId: UUID, targetId: UUID, isTeleportHere: Boolean) : Boolean {
         val requester = server.playerManager.getPlayer(requesterId)
         val target = server.playerManager.getPlayer(targetId)
 
         if (requester == null || target == null) {
-            return
+            return true
         }
-        
+
         // Determine who is teleporting
         val teleportingPlayer = if (isTeleportHere) target else requester
         val destinationPlayer = if (isTeleportHere) requester else target
-        
+
         // Check cooldown
         if (!canPlayerTeleport(teleportingPlayer.uuid)) {
             val remainingSeconds = getRemainingCooldownSeconds(teleportingPlayer.uuid)
             teleportingPlayer.sendMessage(
                 Text.literal("You cannot teleport for another $remainingSeconds seconds").formatted(Formatting.RED)
             )
-            return
+            return false
         }
-        
+
         // Check if destination is safe
         if (!isDestinationSafe(destinationPlayer)) {
             teleportingPlayer.sendMessage(
@@ -354,9 +345,9 @@ class TeleportManager(private val server: MinecraftServer) {
             destinationPlayer.sendMessage(
                 Text.literal("Your location is unsafe for teleportation").formatted(Formatting.RED)
             )
-            return
+            return false
         }
-        
+
         // Execute the teleport
         if (isTeleportHere) {
             // Teleport target to requester
@@ -373,11 +364,13 @@ class TeleportManager(private val server: MinecraftServer) {
                 Text.literal("${requester.name.string} was teleported to you").formatted(Formatting.GREEN)
             )
         }
-        
+
         // Set cooldown for teleported player
         updateTeleportCooldown(teleportingPlayer.uuid)
+
+        return true
     }
-    
+
     /**
      * Get remaining cooldown in seconds for a player
      */
@@ -398,11 +391,11 @@ class TeleportManager(private val server: MinecraftServer) {
         val y = destination.y
         val z = destination.z
         val dimensionKey = destination.world.registryKey.value
-        
+
         // Build teleport command that preserves rotation
         val tpCommand =
             "execute in $dimensionKey run tp ${player.uuid} $x $y $z ${destination.yaw} ${destination.pitch}"
-            
+
         // Execute teleport command
         player.server.commandManager.dispatcher.execute(tpCommand, player.server.commandSource)
     }
@@ -439,12 +432,14 @@ object TeleportManagerInitializer {
      */
     fun initialize(server: MinecraftServer) {
         logger.info("Initializing TeleportManager")
-        
+
         // Load configuration
         val config = Config.Companion.load()
-        logger.info("Loaded TpManager configuration: cooldown=${config.teleportCooldownSeconds}s, " +
-                "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}")
-        
+        logger.info(
+            "Loaded TpManager configuration: cooldown=${config.teleportCooldownSeconds}s, " +
+                    "expiration=${config.requestExpirationTimeSeconds}s, safetyCheck=${config.enableSafetyCheck}"
+        )
+
         // Create teleport manager
         teleportManager = TeleportManager(server)
 
@@ -453,7 +448,7 @@ object TeleportManagerInitializer {
             shutdown()
         }
     }
-    
+
     /**
      * Shutdown and cleanup resources
      */
