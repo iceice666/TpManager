@@ -11,7 +11,7 @@
     "homepage": "https://github.com/iceice666/TpManager",
     "issues": "https://github.com/iceice666/TpManager/issues"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "icon": "assets/tp-manager/icon.png",
   "environment": "*",
   "entrypoints": {
