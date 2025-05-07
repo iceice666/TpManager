@@ -33,8 +33,6 @@ object Commands {
      */
     fun register(
         dispatcher: CommandDispatcher<ServerCommandSource>,
-        registryAccess: CommandRegistryAccess,
-        environment: CommandManager.RegistrationEnvironment
     ) {
         // /tpa <player> - request to teleport to player
         dispatcher.register(

@@ -1,5 +1,6 @@
 package me.iceice666.warp
 
+import net.minecraft.server.MinecraftServer
 import net.minecraft.util.math.Vec3d
 import net.minecraft.util.Identifier
 import java.util.UUID
@@ -86,8 +87,8 @@ class WarpPointDao {
         }
     }
     
-    fun getSpecificPlayerPublicWarps(ownerName: String, server: net.minecraft.server.MinecraftServer, name: String): List<WarpPoint> {
-        val playerUUID = server.userCache.findByName(ownerName).orElse(null)?.id ?: return emptyList()
+    fun getSpecificPlayerPublicWarps(ownerName: String, server: MinecraftServer, name: String): List<WarpPoint> {
+        val playerUUID = server.userCache?.findByName(ownerName)?.orElse(null)?.id ?: return emptyList()
         return transaction {
             WarpPoints.select((WarpPoints.name eq name) and (WarpPoints.owner eq playerUUID) and WarpPoints.isPublic)
                 .map { it.toWarpPoint() }
