@@ -1,3 +1,21 @@
+/*
+ *     TpManager - A Minecraft mod for managing teleportation points
+ *     Copyright (C) 2025-Present Brian Duan <iceice666@outlook.com>
+ *
+ *     This program is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU Affero General Public License as published
+ *     by the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU Affero General Public License for more details.
+ *
+ *     You should have received a copy of the GNU Affero General Public License
+ *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package me.iceice666.warp
 
 import com.mojang.brigadier.CommandDispatcher
@@ -38,54 +56,54 @@ object Commands {
 
         dispatcher.register(
             literal("warps")
-            .requires { it.hasPermissionLevel(0) }
-            .apply {
-                then(
-                    literal("add")
-                        .then(
-                            argument("name", StringArgumentType.string())
-                                .then(
-                                    argument("public", BoolArgumentType.bool())
-                                        .executes(::executeAddWarp)
-                                )
-                        )
-                )
-                then(
-                    literal("remove")
-                        .then(
-                            argument("name", StringArgumentType.string())
-                                .executes(::executeRemoveWarp)
-                        )
-                )
-                then(
-                    literal("modify")
-                        .then(
-                            argument("name", StringArgumentType.string())
-                                .then(
-                                    literal("isPublic")
-                                        .then(
-                                            argument("public", BoolArgumentType.bool())
-                                                .executes(::executeModifyIsPublic)
-                                        )
-                                )
-                                .then(
-                                    literal("name")
-                                        .then(
-                                            argument("newName", StringArgumentType.string())
-                                                .executes(::executeModifyName)
-                                        )
-                                )
-                                .then(
-                                    literal("position")
-                                        .then(
-                                            literal("setHere")
-                                                .executes(::executeModifyPosition)
-                                        )
-                                )
-                        )
-                )
-                then(literal("list").executes(::executeListWarps))
-            })
+                .requires { it.hasPermissionLevel(0) }
+                .apply {
+                    then(
+                        literal("add")
+                            .then(
+                                argument("name", StringArgumentType.string())
+                                    .then(
+                                        argument("public", BoolArgumentType.bool())
+                                            .executes(::executeAddWarp)
+                                    )
+                            )
+                    )
+                    then(
+                        literal("remove")
+                            .then(
+                                argument("name", StringArgumentType.string())
+                                    .executes(::executeRemoveWarp)
+                            )
+                    )
+                    then(
+                        literal("modify")
+                            .then(
+                                argument("name", StringArgumentType.string())
+                                    .then(
+                                        literal("isPublic")
+                                            .then(
+                                                argument("public", BoolArgumentType.bool())
+                                                    .executes(::executeModifyIsPublic)
+                                            )
+                                    )
+                                    .then(
+                                        literal("name")
+                                            .then(
+                                                argument("newName", StringArgumentType.string())
+                                                    .executes(::executeModifyName)
+                                            )
+                                    )
+                                    .then(
+                                        literal("position")
+                                            .then(
+                                                literal("setHere")
+                                                    .executes(::executeModifyPosition)
+                                            )
+                                    )
+                            )
+                    )
+                    then(literal("list").executes(::executeListWarps))
+                })
 
     }
 
@@ -147,13 +165,13 @@ object Commands {
             ctx,
             { player ->
                 // Parse the warp name to determine resolution strategy
-                val (warp, warpName, feedbackText) = when {
+                val (warp, feedbackText) = when {
                     // Format: public:<n> - search only public warps
                     nameArg.startsWith("public:") -> {
                         val warpName = nameArg.substringAfter("public:")
                         val warp = dao.getPublicWarps(warpName).firstOrNull()
                             ?: throw IllegalArgumentException("Public warp '$warpName' not found")
-                        Triple(warp, nameArg, "Warped to public warp '$warpName'")
+                        Pair(warp, "Warped to public warp '$warpName'")
                     }
                     // Format: <player_name>:<n> - search that player's public warps
                     nameArg.contains(":") -> {
@@ -161,19 +179,19 @@ object Commands {
                         val warpName = nameArg.substringAfter(":")
                         val warp = dao.getSpecificPlayerPublicWarps(ownerName, player.server, warpName).firstOrNull()
                             ?: throw IllegalArgumentException("Public warp '$warpName' from player '$ownerName' not found")
-                        Triple(warp, nameArg, "Warped to $ownerName's public warp '$warpName'")
+                        Pair(warp, "Warped to $ownerName's public warp '$warpName'")
                     }
                     // Format: <n> - search player's warps, then public
                     else -> {
                         // First try player's own warps
                         val ownWarp = dao.getPlayerWarps(player.uuid, nameArg).firstOrNull()
                         if (ownWarp != null) {
-                            Triple(ownWarp, nameArg, "Warped to your warp '$nameArg'")
+                            Pair(ownWarp, "Warped to your warp '$nameArg'")
                         } else {
                             // Then try public warps if none found
                             val publicWarp = dao.getPublicWarps(nameArg).firstOrNull()
                                 ?: throw IllegalArgumentException("Warp '$nameArg' not found (checked both your warps and public warps)")
-                            Triple(publicWarp, nameArg, "Warped to public warp '$nameArg'")
+                            Pair(publicWarp, "Warped to public warp '$nameArg'")
                         }
                     }
                 }
