@@ -38,9 +38,15 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+    // Fabric API. This is technically optional, but you probably want it anyway.
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+
+    // Database
+    implementation 'org.jetbrains.exposed:exposed-core:0.61.0'
+    implementation 'org.jetbrains.exposed:exposed-crypt:0.61.0'
+    implementation 'org.jetbrains.exposed:exposed-dao:0.61.0'
+    implementation 'org.jetbrains.exposed:exposed-jdbc:0.61.0'
 }
 
 processResources {

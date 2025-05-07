@@ -17,7 +17,7 @@ import net.minecraft.util.Formatting
 /**
  * Manages teleport-related commands (/tpa, /tph, /tpaccept, /tpdecline, /tpm)
  */
-object TeleportCommands {
+object Commands {
     // Command success/failure constants
     private const val COMMAND_SUCCESS = 1
     private const val COMMAND_FAILURE = 0
