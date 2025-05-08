@@ -49,7 +49,10 @@ object WarpPoints : Table("warp_points") {
 class WarpPointDao {
     private val dimensionCache = mutableMapOf<String, Identifier>()
 
+
     init {
+
+
         transaction {
             SchemaUtils.create(WarpPoints)
         }

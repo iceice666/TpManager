@@ -139,7 +139,6 @@ class TeleportManager(private val server: MinecraftServer) {
         }
 
 
-
         val tpResult = executeTeleport(requesterId, targetId, isTeleportHere)
         if (tpResult) requests.remove(requesterId)
         return true
@@ -334,7 +333,7 @@ class TeleportManager(private val server: MinecraftServer) {
     /**
      * Executes the teleport between two players
      */
-    private fun executeTeleport(requesterId: UUID, targetId: UUID, isTeleportHere: Boolean) : Boolean {
+    private fun executeTeleport(requesterId: UUID, targetId: UUID, isTeleportHere: Boolean): Boolean {
         val requester = server.playerManager.getPlayer(requesterId)
         val target = server.playerManager.getPlayer(targetId)
 
@@ -461,10 +460,6 @@ object TeleportManagerInitializer {
         // Create teleport manager
         teleportManager = TeleportManager(server)
 
-        // Register shutdown hook to clean up resources
-        ServerLifecycleEvents.SERVER_STOPPING.register {
-            shutdown()
-        }
     }
 
     /**

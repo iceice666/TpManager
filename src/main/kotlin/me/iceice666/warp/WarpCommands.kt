@@ -38,7 +38,7 @@ import net.minecraft.text.Text
 import net.minecraft.util.Formatting
 import java.util.concurrent.CompletableFuture
 
-object Commands {
+object WarpCommands {
     private val dao = WarpPointDao()
 
     fun register(
