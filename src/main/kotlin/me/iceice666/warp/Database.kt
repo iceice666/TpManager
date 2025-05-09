@@ -21,7 +21,6 @@ package me.iceice666.warp
 import net.minecraft.server.MinecraftServer
 import net.minecraft.util.math.Vec3d
 import net.minecraft.util.Identifier
-import net.minecraft.util.WorldSavePath
 import java.util.UUID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -71,8 +70,7 @@ class WarpPointDao {
     }
 
 
-
-    fun getAccessiblePoints(owner: UUID): List<WarpPoint> {
+    fun getAccessibleWarps(owner: UUID): List<WarpPoint> {
         return transaction {
             WarpPoints.selectAll()
                 .where((WarpPoints.owner eq owner) or WarpPoints.isPublic)
@@ -80,22 +78,31 @@ class WarpPointDao {
         }
     }
 
-    fun getAccessiblePoints(owner: UUID, name: String): List<WarpPoint> {
+    fun getAccessibleWarps(owner: UUID, name: String): List<WarpPoint> {
         return transaction {
             WarpPoints.selectAll()
-                .where((WarpPoints.name eq name) and((WarpPoints.owner eq owner) or WarpPoints.isPublic))
+                .where((WarpPoints.name eq name) and ((WarpPoints.owner eq owner) or WarpPoints.isPublic))
                 .map { it.toWarpPoint() }
         }
     }
-    
-    fun getPlayerWarps(owner: UUID, name: String): List<WarpPoint> {
+
+    fun getPlayerWarp(owner: UUID, name: String): WarpPoint? {
         return transaction {
             WarpPoints.selectAll()
                 .where((WarpPoints.name eq name) and (WarpPoints.owner eq owner))
+                .firstOrNull()
+                ?.toWarpPoint()
+        }
+    }
+
+    fun getOwnedWarps(owner: UUID): List<WarpPoint> {
+        return transaction {
+            WarpPoints.selectAll()
+                .where(WarpPoints.owner eq owner)
                 .map { it.toWarpPoint() }
         }
     }
-    
+
     fun getPublicWarps(name: String): List<WarpPoint> {
         return transaction {
             WarpPoints
@@ -104,7 +111,7 @@ class WarpPointDao {
                 .map { it.toWarpPoint() }
         }
     }
-    
+
     fun getSpecificPlayerPublicWarps(ownerName: String, server: MinecraftServer, name: String): List<WarpPoint> {
         val playerUUID = server.userCache?.findByName(ownerName)?.orElse(null)?.id ?: return emptyList()
         return transaction {

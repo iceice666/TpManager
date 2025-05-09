@@ -22,7 +22,6 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
-import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import me.iceice666.getUsernameByUuid
 import me.iceice666.logger
@@ -37,7 +36,6 @@ import net.minecraft.text.HoverEvent
 import net.minecraft.text.MutableText
 import net.minecraft.text.Text
 import net.minecraft.util.Formatting
-import java.util.concurrent.CompletableFuture
 
 object WarpCommands {
     private val dao = WarpPointDao()
@@ -49,8 +47,39 @@ object WarpCommands {
             literal("warp")
                 .requires { it.hasPermissionLevel(0) }
                 .then(
-                    argument("name", StringArgumentType.string())
-                        .suggests { context, builder -> buildSuggestion(context, builder) }
+                    argument("name", StringArgumentType.greedyString())
+                        .suggests { context, builder ->
+                            val player = context.source.playerOrThrow
+                            val server = player.server
+                            val playerWarps = dao.getAccessibleWarps(player.uuid)
+
+                            val privateWarps = playerWarps.filter { it.owner == player.uuid }
+                            val publicWarps =
+                                playerWarps.filter { it.isPublic && it.owner != player.uuid }.groupBy { it.name }
+
+                            privateWarps.forEach {
+                                builder.suggest(it.name)
+                            }
+
+                            publicWarps.forEach { (name, warps) ->
+                                if (warps.count() > 1) {
+                                    warps.forEach {
+                                        val ownerName = server.playerManager.getPlayer(it.owner)?.name?.string
+
+                                        if (ownerName != null) {
+                                            builder.suggest("$ownerName:$name")
+                                        }
+                                    }
+                                } else {
+                                    builder.suggest("public:$name")
+                                }
+                            }
+
+
+
+
+                            builder.buildFuture()
+                        }
                         .executes(::executeWarp)
                 )
         )
@@ -65,15 +94,31 @@ object WarpCommands {
                                 argument("name", StringArgumentType.string())
                                     .then(
                                         argument("public", BoolArgumentType.bool())
-                                            .executes{ctx->executeAddWarp(ctx,BoolArgumentType.getBool(ctx, "public"))}
+                                            .executes { ctx ->
+                                                executeAddWarp(
+                                                    ctx,
+                                                    BoolArgumentType.getBool(ctx, "public")
+                                                )
+                                            }
                                     )
-                                    .executes { ctx->executeAddWarp(ctx,false) }
+                                    .executes { ctx -> executeAddWarp(ctx, false) }
                             )
                     )
+
+
+                    val suggestionBuilder =
+                        { context: CommandContext<ServerCommandSource>, builder: SuggestionsBuilder ->
+                            val player = context.source.playerOrThrow
+                            val playerWarps = dao.getOwnedWarps(player.uuid)
+                            playerWarps.forEach { builder.suggest(it.name) }
+                            builder.buildFuture()
+                        }
+
                     then(
                         literal("remove")
                             .then(
                                 argument("name", StringArgumentType.string())
+                                    .suggests(suggestionBuilder)
                                     .executes(::executeRemoveWarp)
                             )
                     )
@@ -81,6 +126,7 @@ object WarpCommands {
                         literal("modify")
                             .then(
                                 argument("name", StringArgumentType.string())
+                                    .suggests(suggestionBuilder)
                                     .then(
                                         literal("isPublic")
                                             .then(
@@ -109,40 +155,6 @@ object WarpCommands {
 
     }
 
-    private fun buildSuggestion(
-        context: CommandContext<ServerCommandSource>,
-        builder: SuggestionsBuilder
-    ): CompletableFuture<Suggestions> {
-        val player = context.source.playerOrThrow
-        val server = player.server
-        val playerWarps = dao.getAccessiblePoints(player.uuid).groupBy { it.owner }
-
-        // First, suggest player's own warps with no prefix
-        playerWarps[player.uuid]?.forEach {
-            builder.suggest(it.name)
-        }
-
-        // Add suggestion for public warps format 
-        playerWarps.values.flatten().filter { it.isPublic }.distinctBy { it.name }.forEach {
-            builder.suggest("public:${it.name}")
-        }
-
-        // Add suggestions for other players' public warps
-        playerWarps.entries.filter { it.key != player.uuid }.forEach { (ownerUuid, warps) ->
-            val ownerName: String? = server.getUsernameByUuid(ownerUuid)
-
-
-
-
-            if (ownerName != null) {
-                warps.filter { it.isPublic }.forEach {
-                    builder.suggest("$ownerName:${it.name}")
-                }
-            }
-        }
-
-        return builder.buildFuture()
-    }
 
     private fun <T> withPlayerAndFeedback(
         ctx: CommandContext<ServerCommandSource>,
@@ -187,7 +199,7 @@ object WarpCommands {
                     // Format: <n> - search player's warps, then public
                     else -> {
                         // First try player's own warps
-                        val ownWarp = dao.getPlayerWarps(player.uuid, nameArg).firstOrNull()
+                        val ownWarp = dao.getPlayerWarp(player.uuid, nameArg)
                         if (ownWarp != null) {
                             Pair(ownWarp, "Warped to your warp '$nameArg'")
                         } else {
@@ -245,7 +257,7 @@ object WarpCommands {
         return withPlayerAndFeedback(
             ctx,
             { player ->
-                val warp = dao.getAccessiblePoints(player.uuid, name).first()
+                val warp = dao.getAccessibleWarps(player.uuid, name).first()
                 val updatedWarp = warp.copy(isPublic = isPublic)
                 dao.update(updatedWarp)
                 name
@@ -261,7 +273,7 @@ object WarpCommands {
         return withPlayerAndFeedback(
             ctx,
             { player ->
-                val warp = dao.getAccessiblePoints(player.uuid, oldName).first()
+                val warp = dao.getAccessibleWarps(player.uuid, oldName).first()
                 dao.remove(oldName, player.uuid)
                 dao.add(warp.copy(name = newName))
                 newName
@@ -276,7 +288,7 @@ object WarpCommands {
         return withPlayerAndFeedback(
             ctx,
             { player ->
-                val warp = dao.getAccessiblePoints(player.uuid, name).first()
+                val warp = dao.getAccessibleWarps(player.uuid, name).first()
                 val updatedWarp = warp.copy(position = player.pos, dimension = player.world.registryKey.value)
                 dao.update(updatedWarp)
                 name
@@ -289,7 +301,7 @@ object WarpCommands {
     private fun executeListWarps(ctx: CommandContext<ServerCommandSource>): Int {
         return withPlayerAndFeedback(
             ctx,
-            { player -> Pair(player, dao.getAccessiblePoints(player.uuid)) },
+            { player -> Pair(player, dao.getAccessibleWarps(player.uuid)) },
             { (player, warps) ->
                 val publicPoints = warps.filter { it.isPublic }
                 val privatePoints = warps.filter { it -> !it.isPublic && it.owner == player.uuid }
@@ -303,7 +315,7 @@ object WarpCommands {
                     privatePoints.forEach { warp ->
                         appendWarpEntry(result, warp, player)
                     }
-                   result.append(Text.literal("\n"))
+                    result.append(Text.literal("\n"))
                 }
 
                 // Player's public warps section
