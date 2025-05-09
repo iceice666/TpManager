@@ -25,6 +25,7 @@ import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import me.iceice666.getUsernameByUuid
+import me.iceice666.logger
 import net.minecraft.registry.RegistryKey
 import net.minecraft.registry.RegistryKeys
 import net.minecraft.server.command.CommandManager.argument
@@ -64,8 +65,9 @@ object WarpCommands {
                                 argument("name", StringArgumentType.string())
                                     .then(
                                         argument("public", BoolArgumentType.bool())
-                                            .executes(::executeAddWarp)
+                                            .executes{ctx->executeAddWarp(ctx,BoolArgumentType.getBool(ctx, "public"))}
                                     )
+                                    .executes { ctx->executeAddWarp(ctx,false) }
                             )
                     )
                     then(
@@ -155,6 +157,7 @@ object WarpCommands {
             1
         } catch (e: Exception) {
             if (errorMessage != null) ctx.source.sendError(errorMessage)
+            logger.error(e.toString())
             0
         }
     }
@@ -214,9 +217,8 @@ object WarpCommands {
         )
     }
 
-    private fun executeAddWarp(ctx: CommandContext<ServerCommandSource>): Int {
+    private fun executeAddWarp(ctx: CommandContext<ServerCommandSource>, isPublic: Boolean): Int {
         val name = StringArgumentType.getString(ctx, "name")
-        val isPublic = BoolArgumentType.getBool(ctx, "public")
         return withPlayerAndFeedback(
             ctx,
             { player ->
@@ -301,7 +303,7 @@ object WarpCommands {
                     privatePoints.forEach { warp ->
                         appendWarpEntry(result, warp, player)
                     }
-                    result.append(Text.literal("\n"))
+                   result.append(Text.literal("\n"))
                 }
 
                 // Player's public warps section
@@ -335,7 +337,7 @@ object WarpCommands {
 
                 if (warps.isEmpty()) {
                     result.append(
-                        Text.literal("No warps available. Create one with /warps add <name> <public>")
+                        Text.literal("No warps available. Create one with /warps add <name>")
                             .styled { it.withItalic(true) })
                 }
 

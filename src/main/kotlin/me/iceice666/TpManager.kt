@@ -22,11 +22,14 @@ package me.iceice666
 import me.iceice666.tp.TeleportManagerInitializer
 import me.iceice666.tp.TpmCommands
 import me.iceice666.warp.WarpCommands
+import me.iceice666.warp.WarpPoints
 import net.fabricmc.api.DedicatedServerModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.minecraft.util.WorldSavePath
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -44,12 +47,16 @@ object TpManager : DedicatedServerModInitializer {
         // Initialize managers when server starts
         ServerLifecycleEvents.SERVER_STARTED.register { server ->
             TeleportManagerInitializer.initialize(server)
-
             val warpDbPath = server.getSavePath(WorldSavePath.ROOT).resolve("warps.sqlite")
             Database.connect(
                 driver = "org.sqlite.JDBC",
                 url = "jdbc:sqlite:${warpDbPath.toAbsolutePath()}",
             )
+
+
+            transaction {
+                SchemaUtils.create(WarpPoints)
+            }
 
         }
 
